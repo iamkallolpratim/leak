@@ -17,7 +17,6 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 dist/
-video
 # node
 node_modules/
 .next/
@@ -29,3 +28,6 @@ leak/_web/
 config.toml
 # local tooling
 .claude/
+
+# macOS
+.DS_Store

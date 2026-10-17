@@ -1,0 +1,26 @@
+{
+  "name": "leak-video",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "shots": "node scripts/capture.mjs",
+    "studio": "remotion studio",
+    "render": "remotion render LeakDemo out/leak-demo.mp4 --crf=23",
+    "gif": "remotion render LeakTeaser out/leak-demo.gif --codec=gif --every-nth-frame=3 --scale=0.5 --number-of-gif-loops=0",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.532",
+    "@remotion/google-fonts": "4.0.532",
+    "@remotion/transitions": "4.0.532",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "remotion": "4.0.532"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "puppeteer-core": "24.43.1",
+    "typescript": "5.9.3"
+  }
+}
