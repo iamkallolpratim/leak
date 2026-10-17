@@ -41,6 +41,7 @@ Leak is built on the assumption that your financial data is nobody's business.
 - **See exactly what the model saw.** The trace records the post-guard payload of every step; the dashboard's *What the LLM saw* page shows it verbatim.
 - **No send tool.** The agent can *queue* a Gmail draft or a calendar reminder; nothing happens until you press Approve. There is no code in this repository that sends email. Gmail access is read-only unless you opt in to `gmail.compose` (drafts).
 - **Grounded findings only.** A finding is accepted only if every evidence id it cites exists and its amount appears in the cited text.
+- **Generated text is untrusted too.** The model read your email, and email can carry prompt injections. Findings whose merchant name or explanation contains personal identifiers or links are rejected, and every draft and reminder is re-checked right before the Gmail call or file write. If anything looks off, the action is blocked, not sent.
 - **Bring your own OAuth client.** Leak ships no Google client ID, so no third party ever holds a token to your inbox.
 - **Local dashboard hardening.** Binds to `127.0.0.1`, rejects non-localhost `Host` headers (DNS rebinding), sends no CORS headers, and requires a per-process token for approvals and unmasking.
 

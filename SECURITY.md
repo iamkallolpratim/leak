@@ -16,3 +16,7 @@ Design notes for reviewers:
   mutation and every unmask.
 * The agent can only *enqueue* write actions; `leak/actions/execute.py` runs them
   after a human approves. There is no code that sends email.
+* Model-generated text is treated as untrusted output. `vet_outbound()` in
+  `leak/privacy/guard.py` rejects findings whose merchant/explanation carry PII or
+  links, and re-checks every draft and reminder immediately before the Gmail
+  `drafts.create` call or `.ics` write; a hit fails the action closed.

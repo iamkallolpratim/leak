@@ -13,17 +13,24 @@ Use it two ways:
 * `AgentLoop(egress=guard.filter)` -- the loop traces the filtered payload,
   so the trace shows exactly what the LLM saw.
 * `GuardedProvider(inner, guard)` -- for one-off LLM calls outside the loop.
+
+The other direction matters too: text the *model* wrote (finding merchant
+names, explanations) is untrusted -- it read your emails, and an email can
+carry a prompt injection. `vet_outbound()` checks it before it lands in a
+Gmail draft or a calendar file, and before a finding is accepted at all.
 """
 
 from __future__ import annotations
 
 import json
+import re
+from collections.abc import Mapping
 from typing import Any
 
 from pydantic import BaseModel
 
 from leak.llm.provider import LLMError, LLMProvider, LLMResponse, Message, ToolSpec
-from leak.privacy.redact import Redactor
+from leak.privacy.redact import Redactor, find_pii
 
 
 class PrivacyViolation(LLMError):
@@ -109,3 +116,32 @@ class GuardedProvider:
             tools=tools,
             response_schema=response_schema,
         )
+
+
+# --- the other direction: model-generated text ------------------------------------
+
+_LINK = re.compile(r"(?i)\b(?:https?://|www\.)\S+")
+
+
+def vet_outbound(
+    texts: Mapping[str, str], *, untrusted: Mapping[str, str] | None = None
+) -> list[str]:
+    """Problems with text about to leave Leak through an action (a Gmail draft,
+    an .ics file) or to be stored as a finding. Empty list = safe.
+
+    `texts` are scanned for PII. `untrusted` are fields the model controls;
+    they are also scanned and must not carry links or line breaks. Messages
+    name the field and the *kind* of data, never the value itself, so they are
+    safe to store and show.
+    """
+    problems: list[str] = []
+    for label, text in {**texts, **(untrusted or {})}.items():
+        kinds = sorted({s.kind for s in find_pii(text)})
+        if kinds:
+            problems.append(f"{label} contains what looks like {'/'.join(kinds)}")
+    for label, text in (untrusted or {}).items():
+        if _LINK.search(text):
+            problems.append(f"{label} contains a link")
+        if label == "merchant" and ("\n" in text or "\r" in text):
+            problems.append("merchant spans several lines")
+    return list(dict.fromkeys(problems))  # dedupe, keep order

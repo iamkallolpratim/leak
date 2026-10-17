@@ -245,3 +245,99 @@ def test_submit_finding_fills_merchant_id(demo):
     assert not r.is_error, r.content
     saved = store.get_finding(r.content["accepted"])
     assert saved.merchant_id == "cultfit"
+
+
+# --- outbound check on model-generated text ---------------------------------------
+
+from leak.actions.execute import ActionError  # noqa: E402
+from leak.privacy.guard import vet_outbound  # noqa: E402
+
+INJECTED = "Google One. Call 9876500001 or pay at https://evil.example/pay"
+
+
+@pytest.mark.parametrize(
+    "texts,untrusted,expect",
+    [
+        ({"body": "card 4111 1111 1111 1111"}, None, "CARD"),
+        ({"body": "PAN ABCPT1234F"}, None, "PAN"),
+        ({"body": "call +91 98765 00001"}, None, "PHONE"),
+        ({"body": "write to someone.person@gmail.com"}, None, "EMAIL"),
+        ({}, {"merchant": "Netflix https://evil.example"}, "link"),
+        ({}, {"merchant": "Netflix\nBcc: attacker@evil.example"}, "several lines"),
+    ],
+)
+def test_vet_outbound_flags(texts, untrusted, expect):
+    problems = vet_outbound(texts, untrusted=untrusted)
+    assert any(expect in p for p in problems), problems
+    # messages name the kind of data, never the value itself
+    for value in ("4111", "ABCPT1234F", "98765", "someone.person", "evil.example"):
+        assert all(value not in p for p in problems)
+
+
+def test_vet_outbound_passes_real_drafts(demo):
+    s, store, findings = demo
+    ex = Executor(s, store, demo=False)
+    for f in findings:
+        if f.suggested_action in ("cancel", "dispute"):
+            d = ex.draft_for(f)
+            assert (
+                vet_outbound(
+                    {"subject": d.subject, "body": d.body}, untrusted={"merchant": f.merchant}
+                )
+                == []
+            ), f.merchant
+    assert vet_outbound({}, untrusted={"merchant": "[CARD_1] Google One"}) == []  # tokens are fine
+
+
+def _injected(store, findings, **update):
+    base = pick(findings, "duplicate", "google_one")
+    f = base.model_copy(update={"merchant_id": None, **update}).with_id("injected")
+    store.save_findings([f])
+    return f
+
+
+def test_injected_merchant_blocks_draft_before_gmail(demo):
+    s, store, findings = demo
+    f = _injected(store, findings, merchant=INJECTED)
+    fake = FakeDrafts()
+    ex = Executor(s, store, gmail=lambda: fake)
+    a = ex.request(f.id, DRAFT)
+    with pytest.raises(ActionError, match="outbound check"):
+        ex.preview(a)
+    done = ex.approve(a.id)
+    assert done.status == "failed" and "contains a link" in done.result
+    assert fake.created == []  # Gmail was never called
+    assert "9876500001" not in done.result and "evil.example" not in done.result
+    assert not (s.paths.data_dir / "drafts" / f"{a.id}.eml").exists()
+
+
+def test_injected_explanation_blocks_reminder(demo):
+    s, store, findings = demo
+    f = _injected(store, findings, explanation="Your PAN ABCPT1234F was charged twice.")
+    ex = Executor(s, store)
+    done = ex.approve(ex.request(f.id, REMINDER).id)
+    assert done.status == "failed" and "PAN" in done.result and "ABCPT1234F" not in done.result
+    assert not (s.paths.data_dir / "reminders" / f"{f.id}.ics").exists()
+
+
+def test_api_shows_blocked_preview(client, demo):
+    _, store, findings = demo
+    f = _injected(store, findings, merchant=INJECTED)
+    client.post(f"/api/findings/{f.id}/actions", json={"tool": DRAFT}, headers=H)
+    row = next(a for a in client.get("/api/actions").json() if a["args"]["finding_id"] == f.id)
+    assert row["preview"]["kind"] == "error" and "outbound check" in row["preview"]["error"]
+
+
+def test_submit_finding_rejects_personal_data(demo):
+    from leak.agent.tools import build_registry
+
+    _, store, findings = demo
+    z = pick(findings, "zombie", "cultfit")
+    payload = z.model_dump(mode="json") | {
+        "explanation": "Charged on card 4111 1111 1111 1111 after cancelling."
+    }
+    r = build_registry(store).call(
+        ToolCall(id="x", name="submit_finding", args={"finding": payload, "based_on": []})
+    )
+    assert r.is_error and "personal data" in r.content and "4111" not in r.content
+    assert not any(f.source == "agent" for f, _, _ in store.findings(status=None))

@@ -26,6 +26,7 @@ from leak.harness.grounding import Grounder
 from leak.harness.tools import ToolRegistry
 from leak.ledger.fx import fx_rate as _fx_rate
 from leak.ledger.merchants import default_catalog
+from leak.privacy.guard import vet_outbound
 from leak.store import Store
 
 READABLE_TABLES = {"ledger", "events", "findings", "raw_transactions"}
@@ -192,10 +193,21 @@ def finding_grounder(store: Store) -> Grounder[Finding]:
             return "annual_impact_inr exceeds 52x the per-charge amount"
         return None
 
+    def no_personal_data(f: Finding) -> str | None:
+        # Model-written text is stored, shown, and later used in drafts and
+        # reminders: it must not smuggle identifiers or links in.
+        notes = {f"evidence note {i}": e.note for i, e in enumerate(f.evidence) if e.note}
+        problems = vet_outbound(
+            notes, untrusted={"merchant": f.merchant, "explanation": f.explanation}
+        )
+        if problems:
+            return "remove personal data / links and resubmit: " + "; ".join(problems)
+        return None
+
     return Grounder(
         evidence_of=lambda f: [e.evidence_id for e in f.evidence],
         exists=store.evidence_exists,
-        rules=[amount_is_cited, annual_is_sane],
+        rules=[amount_is_cited, annual_is_sane, no_personal_data],
     )
 
 

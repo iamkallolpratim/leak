@@ -26,7 +26,7 @@ from rich.progress import (
 from rich.progress import Progress as RichBar
 from rich.table import Table
 
-from leak.actions.execute import Executor
+from leak.actions.execute import ActionError, Executor
 from leak.config import Settings, load_settings
 from leak.demo_tools import build_toy_registry
 from leak.harness import AgentLoop, ReplayProvider, load_trace, render_replay
@@ -333,7 +333,11 @@ def actions_approve(
     a = ex.queue.get(action_id)
     if a is None:
         raise typer.BadParameter(f"no action {action_id}")
-    preview = ex.preview(a)
+    try:
+        preview = ex.preview(a)
+    except ActionError as e:
+        console.print(f"[red]cannot approve {action_id}[/]: {e}")
+        raise typer.Exit(1) from e
     if preview["kind"] == "email":
         console.print(f"[bold]To:[/] {preview['to'] or '(you fill in)'}\n"
                       f"[bold]Subject:[/] {preview['subject']}\n\n{preview['body']}\n")  # fmt: skip

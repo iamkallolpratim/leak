@@ -18,6 +18,7 @@ from leak.config import Settings
 from leak.findings import Finding
 from leak.harness.permissions import PendingAction
 from leak.ledger.merchants import default_catalog
+from leak.privacy.guard import vet_outbound
 from leak.store import Store
 
 DRAFT = "draft_cancellation_email"
@@ -66,18 +67,42 @@ class Executor:
         return f
 
     def draft_for(self, finding: Finding) -> DraftEmail:
-        names = self.settings.privacy.my_names
         return compose(
             finding,
             store=self.store,
             catalog=default_catalog(),
-            sender_name=names[0] if names else "",
+            sender_name=self._sender(),
             demo=self.demo,
         )
 
+    def vet(self, action: PendingAction, finding: Finding) -> None:
+        """Fail closed on generated content before it reaches Google or disk.
+
+        The draft body is a template, but the merchant name and the reminder's
+        explanation came from the model, which read untrusted email. Block the
+        action if anything looks like personal data, a link, or header tricks.
+        """
+        if action.tool == DRAFT:
+            d = self.draft_for(finding)
+            # Your own name in the signature is intended; the generic scan
+            # doesn't flag names, only identifiers (cards, PAN, phones, ...).
+            texts = {"subject": d.subject, "body": d.body}
+            untrusted = {"merchant": finding.merchant}
+        else:
+            texts = {}
+            untrusted = {"merchant": finding.merchant, "explanation": finding.explanation}
+        problems = vet_outbound(texts, untrusted=untrusted)
+        if problems:
+            raise ActionError("blocked by the outbound check: " + "; ".join(problems))
+
+    def _sender(self) -> str:
+        names = self.settings.privacy.my_names
+        return names[0] if names else ""
+
     def preview(self, action: PendingAction) -> dict[str, Any]:
-        """What approving would do -- computed, nothing executed."""
+        """What approving would do -- computed and vetted, nothing executed."""
         f = self._finding(action)
+        self.vet(action, f)
         if action.tool == DRAFT:
             return {"kind": "email", **self.draft_for(f).model_dump()}
         if action.tool == REMINDER:
@@ -86,6 +111,7 @@ class Executor:
 
     def _run(self, action: PendingAction) -> str:
         f = self._finding(action)
+        self.vet(action, f)  # last check, right before the Gmail call / file write
         if action.tool == DRAFT:
             draft = self.draft_for(f)
             local = self._write(f"drafts/{action.id}.eml", bytes(draft.to_mime()))
