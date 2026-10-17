@@ -48,6 +48,22 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# `uv build` builds the sdist first and then the wheel *from that sdist*, so everything the
+# wheel needs must be in the sdist: the package, demo data, recorded model output, config
+# example, and the dashboard (leak/_web is gitignored, hence `artifacts`). Keeping the list
+# explicit also keeps the sdist small (no video, web sources or screenshots).
+[tool.hatch.build.targets.sdist]
+include = [
+    "/leak",
+    "/demo/sample_data",
+    "/evals/cassettes",
+    "/config.example.toml",
+    "/README.md",
+    "/LICENSE",
+    "/tests",
+]
+artifacts = ["leak/_web/**"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["leak"]
 # leak/_web is gitignored (built by `npm run build` in web/) but must ship.
