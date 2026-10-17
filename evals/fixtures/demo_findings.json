@@ -1,0 +1,23 @@
+{
+  "_comment": "Findings planted in demo/generate_sample_data.py (see its docstring). Detection is scored on (type, merchant_id). Anything else a detector reports - rent, salary, food orders, utilities - is a false positive.",
+  "expected": [
+    ["zombie", "cultfit"],
+    ["price_hike", "netflix"],
+    ["trial_conversion", "disney_hotstar"],
+    ["duplicate", "google_one"],
+    ["duplicate", "disney_hotstar"],
+    ["duplicate", "amazon_prime"],
+    ["forex", "chatgpt"],
+    ["recurring", "netflix"],
+    ["recurring", "spotify"],
+    ["recurring", "youtube_premium"],
+    ["recurring", "google_one"],
+    ["recurring", "cultfit"],
+    ["recurring", "chatgpt"],
+    ["recurring", "disney_hotstar"],
+    ["recurring", "amazon_prime"],
+    ["recurring", "swiggy_one"],
+    ["recurring", "safelife_insurance"],
+    ["recurring", "airtel_black"]
+  ]
+}

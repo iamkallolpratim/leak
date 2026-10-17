@@ -1,0 +1,31 @@
+# secrets
+.env
+token*.json
+credentials*.json
+client_secret*.json
+# local data
+.leak/
+*.db
+*.sqlite*
+vault*
+traces/
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
+video
+# node
+node_modules/
+.next/
+
+# built dashboard (web/ -> npm run build)
+leak/_web/
+
+# personal config (copy of config.example.toml)
+config.toml
+# local tooling
+.claude/

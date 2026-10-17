@@ -1,0 +1,66 @@
+# Leak configuration. Copy to config.toml and edit.
+# Secrets (GEMINI_API_KEY) go in .env, never here.
+
+[llm]
+provider = "gemini"
+# Model IDs are config, not code. Check current IDs at
+# https://ai.google.dev/gemini-api/docs/models  (checked 2026-10-17)
+extract_model = "gemini-3.5-flash-lite"   # cheap, high-volume extraction
+reason_model  = "gemini-3.1-pro-preview"  # auditor agent; no stable Pro yet
+
+# USD per 1M tokens (paid tier, prompts <=200k). Used for budgets only;
+# treat as an estimate. https://ai.google.dev/gemini-api/docs/pricing
+[llm.prices."gemini-3.5-flash-lite"]
+input = 0.30
+output = 2.50
+cached_input = 0.03
+
+[llm.prices."gemini-3.6-flash"]
+input = 0.75
+output = 3.75
+cached_input = 0.075
+
+[llm.prices."gemini-3.1-pro-preview"]
+input = 2.00
+output = 12.00
+cached_input = 0.20
+
+[budget]
+max_steps = 25
+max_usd = 0.50        # per run
+usd_inr = 88.0        # fixed rate for showing cost in ₹
+
+[agent]
+# The auditor (reason_model) gets its own, larger budget per `leak report` run.
+max_steps = 30
+max_usd = 1.00
+
+[paths]
+data_dir = ".leak"    # SQLite DB, vault, traces live here (gitignored)
+
+# Tighten any tool's permission: "auto" | "needs_approval" | "forbidden".
+# Overrides can only make a tool stricter, never looser.
+[permissions]
+# search_gmail = "needs_approval"
+
+[privacy]
+# Your own identifiers; always masked before anything reaches an LLM.
+my_names = []                 # e.g. ["Priya Sharma"]
+my_emails = []
+my_address_fragments = []     # e.g. ["Lake View Apartments"]
+
+[gmail]
+client_secret = "~/.config/leak/client_secret.json"  # your own GCP OAuth Desktop client
+max_messages = 2000
+enable_actions = false        # true adds gmail.compose (drafts only; no send tool exists)
+# query = "newer_than:2y {receipt renewal ...}"     # default is in leak/ingest/gmail.py
+
+[statements]
+# dir = "~/Documents/statements"
+# PDF passwords: set LEAK_PDF_PASSWORDS="pw1,pw2" in .env (preferred) or list here.
+passwords = []
+llm_fallback = true           # unknown banks: send *redacted text* to extract_model
+
+[sms]
+# paths = ["~/Downloads/sms-20261001.xml"]   # Android "SMS Backup & Restore" export
+paths = []

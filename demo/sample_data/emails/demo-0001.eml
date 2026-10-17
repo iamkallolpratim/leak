@@ -1,0 +1,31 @@
+From: Netflix <info@account.netflix.com>
+To: Asha Testkumar <asha.testkumar@example.com>
+Subject: Your Netflix payment receipt
+Date: Sun, 05 Apr 2026 09:47:00 +0530
+Message-ID: <demo-0001@leak.demo>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="leak-demo-boundary-0001"
+
+--leak-demo-boundary-0001
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Hi Asha,
+
+We received your payment of Rs 649.00 for Netflix Premium.
+Payment method: UPI AutoPay
+Billing date: 05 April 2026
+Next billing date: 05 May 2026
+
+Manage your membership at netflix.com/account.
+
+--leak-demo-boundary-0001
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body><h2>Payment receipt</h2><p>Hi Asha,</p><table><tr><td>Plan</td><t=
+d>Premium</td></tr><tr><td>Amount</td><td>&#8377;649.00</td></tr><tr><td>Paym=
+ent</td><td>UPI AutoPay</td></tr></table></body></html>
+
+--leak-demo-boundary-0001--

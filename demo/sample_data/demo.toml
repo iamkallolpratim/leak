@@ -1,0 +1,12 @@
+# Overlay used by `leak scan --demo`. Everything here is synthetic.
+db_name = "demo.db"
+
+[privacy]
+my_names = ["Asha Testkumar"]
+my_emails = ["asha.testkumar@example.com", "asha.family.test@example.com"]
+my_address_fragments = ["Synthetic Heights", "Testnagar"]
+
+[statements]
+# Demo PDF passwords (synthetic). For real statements use LEAK_PDF_PASSWORDS in .env.
+passwords = ["ASHA0101", "01011990"]
+llm_fallback = false

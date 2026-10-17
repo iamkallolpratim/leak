@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Lint, types, tests, evals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Type-check (mypy --strict on leak.harness / leak.llm)
+        run: uv run mypy leak
+      - name: Tests (offline; no API key)
+        run: uv run pytest -q
+      - name: Evals (replays the committed cassette, costs $0)
+        run: uv run python evals/run_evals.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: evals/results.json
+
+  web:
+    name: Dashboard type-check + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashboard
+          path: leak/_web
+
+  package:
+    name: Wheel smoke test (uvx leak-audit demo)
+    needs: [python, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dashboard
+          path: leak/_web
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv build --wheel
+      - name: Demo runs from the wheel with no API key
+        run: |
+          cd "$(mktemp -d)"
+          uvx --from "$GITHUB_WORKSPACE"/dist/*.whl leak-audit demo --no-serve --no-agent | tee demo.txt
+          grep -q "potential savings" demo.txt

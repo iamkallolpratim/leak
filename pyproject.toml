@@ -1,0 +1,82 @@
+[project]
+name = "leak-audit"
+version = "0.1.0"
+description = "Local-first AI agent that finds recurring charges, hidden fees and forgotten subscriptions in your email, bank statements and SMS."
+keywords = ["agent", "llm", "gemini", "personal-finance", "subscriptions", "privacy", "india"]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Office/Business :: Financial",
+]
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "google-genai>=1.0",
+    "pydantic>=2.7",
+    "typer>=0.12",
+    "python-dotenv>=1.0",
+    "pikepdf>=10.17.0",
+    "pdfplumber>=0.11.10",
+    "sqlite-utils>=4.2.1",
+    "google-api-python-client>=2.201.0",
+    "google-auth-oauthlib>=1.5.0",
+    "defusedxml>=0.7.1",
+    "rich>=15.0.0",
+    "pyyaml>=6.0.3",
+    "fastapi>=0.143.3",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+leak = "leak.cli:app"
+leak-audit = "leak.cli:app"  # so `uvx leak-audit demo` works
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "fpdf2>=2.8.9",
+    "types-defusedxml>=0.7.0.20260504",
+    "types-pyyaml>=6.0.12.20260906",
+    "httpx>=0.28.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["leak"]
+# leak/_web is gitignored (built by `npm run build` in web/) but must ship.
+artifacts = ["leak/_web/**"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["B008"]  # typer.Option defaults are the idiom
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["leak.harness.*", "leak.llm.*"]
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["google_auth_oauthlib.*", "googleapiclient.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"config.example.toml" = "leak/config.example.toml"
+"demo/sample_data" = "leak/_demo_data"
+"evals/cassettes" = "leak/_cassettes"

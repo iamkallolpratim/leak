@@ -1,0 +1,97 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "extraction": {
+    "cancellation": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "charge": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 38,
+      "fp": 0,
+      "fn": 0
+    },
+    "price_change": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "renewal": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0
+    },
+    "overall": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 42,
+      "fp": 0,
+      "fn": 0
+    }
+  },
+  "detection": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "tp": 18,
+    "fp": 0,
+    "fn": 0,
+    "missed": [],
+    "unexpected": []
+  },
+  "documents": {
+    "total": 43,
+    "by_sms_rules": 21,
+    "cache_hits": 22,
+    "llm_docs": 0,
+    "llm_calls": 0,
+    "failed": 0,
+    "ungrounded_dropped": 0
+  },
+  "ledger": {
+    "entries": 155,
+    "multi_source": 27,
+    "missed_merges": 0,
+    "unresolved_merchants": 42
+  },
+  "live_costs": {
+    "_comment": "Measured on live Gemini runs over the synthetic demo (22 emails, 21 SMS, 4 statements). Updated by `run_evals.py --live`; the auditor numbers come from `leak report --demo`.",
+    "extraction": {
+      "model": "gemini-3.5-flash-lite",
+      "documents_via_llm": 22,
+      "llm_calls": 3,
+      "input_tokens": 11322,
+      "output_tokens": 7564,
+      "usd": "0.0223",
+      "inr": "1.96"
+    },
+    "auditor": {
+      "model": "gemini-3.1-pro-preview",
+      "steps": 20,
+      "input_tokens": 292510,
+      "cached_input_tokens": 195292,
+      "output_tokens": 8101,
+      "usd": "0.3307",
+      "inr": "29.10"
+    }
+  },
+  "cost_this_run": {
+    "usd": "0.0000",
+    "inr": "0.00",
+    "input_tokens": 0,
+    "output_tokens": 0
+  }
+}

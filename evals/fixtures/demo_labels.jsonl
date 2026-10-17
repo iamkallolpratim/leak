@@ -1,0 +1,43 @@
+{"evidence_id": "gmail:demo-0001", "records": [{"kind": "charge", "merchant": "netflix", "amount": 649}]}
+{"evidence_id": "gmail:demo-0002", "records": [{"kind": "charge", "merchant": "netflix", "amount": 649}]}
+{"evidence_id": "gmail:demo-0003", "records": [{"kind": "charge", "merchant": "netflix", "amount": 649}]}
+{"evidence_id": "gmail:demo-0004", "records": [{"kind": "charge", "merchant": "netflix", "amount": 649}]}
+{"evidence_id": "gmail:demo-0005", "records": [{"kind": "charge", "merchant": "netflix", "amount": 799}]}
+{"evidence_id": "gmail:demo-0006", "records": [{"kind": "charge", "merchant": "netflix", "amount": 799}]}
+{"evidence_id": "gmail:demo-0007", "records": [{"kind": "price_change", "merchant": "netflix", "amount": 799}]}
+{"evidence_id": "gmail:demo-0008", "records": [{"kind": "charge", "merchant": "spotify", "amount": 119}]}
+{"evidence_id": "gmail:demo-0009", "records": [{"kind": "charge", "merchant": "spotify", "amount": 119}]}
+{"evidence_id": "gmail:demo-0010", "records": [{"kind": "charge", "merchant": "amazon_prime", "amount": 1499}]}
+{"evidence_id": "gmail:demo-0011", "records": [{"kind": "charge", "merchant": "disney_hotstar", "amount": 1}, {"kind": "renewal", "merchant": "disney_hotstar", "amount": 299}]}
+{"evidence_id": "gmail:demo-0012", "records": [{"kind": "charge", "merchant": "airtel_black", "amount": 1099}]}
+{"evidence_id": "gmail:demo-0013", "records": [{"kind": "cancellation", "merchant": "cultfit", "amount": null}]}
+{"evidence_id": "gmail:demo-0014", "records": [{"kind": "charge", "merchant": "chatgpt", "amount": 20}]}
+{"evidence_id": "gmail:demo-0015", "records": [{"kind": "charge", "merchant": "chatgpt", "amount": 20}]}
+{"evidence_id": "gmail:demo-0016", "records": [{"kind": "charge", "merchant": "google_one", "amount": 130}]}
+{"evidence_id": "gmail:demo-0017", "records": [{"kind": "charge", "merchant": "google_one", "amount": 130}]}
+{"evidence_id": "gmail:demo-0018", "records": [{"kind": "charge", "merchant": "youtube_premium", "amount": 149}]}
+{"evidence_id": "gmail:demo-0019", "records": [{"kind": "renewal", "merchant": "safelife_insurance", "amount": 12000}]}
+{"evidence_id": "gmail:demo-0020", "records": [{"kind": "charge", "merchant": "swiggy_one", "amount": 299}]}
+{"evidence_id": "gmail:demo-0021", "records": []}
+{"evidence_id": "gmail:demo-0022", "records": [{"kind": "charge", "merchant": "swiggy", "amount": 486}]}
+{"evidence_id": "sms:199945b39b3b", "records": [{"kind": "charge", "merchant": "netflix", "amount": 649}]}
+{"evidence_id": "sms:dcef42af08a0", "records": [{"kind": "charge", "merchant": "spotify", "amount": 119}]}
+{"evidence_id": "sms:363169e14d11", "records": [{"kind": "charge", "merchant": "cultfit", "amount": 1499}]}
+{"evidence_id": "sms:148b6d3299ce", "records": [{"kind": "charge", "merchant": "netflix", "amount": 649}]}
+{"evidence_id": "sms:e64db5fe8fa5", "records": [{"kind": "charge", "merchant": "spotify", "amount": 119}]}
+{"evidence_id": "sms:14fde757906d", "records": [{"kind": "charge", "merchant": "cultfit", "amount": 1499}]}
+{"evidence_id": "sms:86438a686944", "records": [{"kind": "charge", "merchant": "netflix", "amount": 649}]}
+{"evidence_id": "sms:d30e2b1df07a", "records": [{"kind": "charge", "merchant": "spotify", "amount": 119}]}
+{"evidence_id": "sms:f75a862cf90f", "records": [{"kind": "charge", "merchant": "cultfit", "amount": 1499}]}
+{"evidence_id": "sms:6787aabf0be8", "records": [{"kind": "charge", "merchant": "netflix", "amount": 649}]}
+{"evidence_id": "sms:9f7d5873576f", "records": [{"kind": "charge", "merchant": "spotify", "amount": 119}]}
+{"evidence_id": "sms:0e44dcad3ba4", "records": [{"kind": "charge", "merchant": "cultfit", "amount": 1499}]}
+{"evidence_id": "sms:807d5a8a11f2", "records": [{"kind": "charge", "merchant": "netflix", "amount": 799}]}
+{"evidence_id": "sms:b69b58003099", "records": [{"kind": "charge", "merchant": "spotify", "amount": 119}]}
+{"evidence_id": "sms:641bb3b861ee", "records": [{"kind": "charge", "merchant": "cultfit", "amount": 1499}]}
+{"evidence_id": "sms:15ace3738d6c", "records": [{"kind": "charge", "merchant": "netflix", "amount": 799}]}
+{"evidence_id": "sms:9e8b9d9e3012", "records": [{"kind": "charge", "merchant": "spotify", "amount": 119}]}
+{"evidence_id": "sms:9e8db9f2240f", "records": [{"kind": "charge", "merchant": "cultfit", "amount": 1499}]}
+{"evidence_id": "sms:4105e747672b", "records": [{"kind": "charge", "merchant": "disney_hotstar", "amount": 1}]}
+{"evidence_id": "sms:e7e195df4c54", "records": [{"kind": "charge", "merchant": "disney_hotstar", "amount": 299}]}
+{"evidence_id": "sms:519dd64b7534", "records": []}

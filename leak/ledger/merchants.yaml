@@ -1,0 +1,247 @@
+# Merchant catalog. Add entries freely -- PRs welcome.
+#
+# id:        stable slug used everywhere (findings, evals)
+# aliases:   lowercase phrases matched on word boundaries against statement
+#            narrations, SMS, email subjects/senders, UPI handles. Longest match wins.
+# domains:   sender email domains that identify the merchant on their own
+# typical:   typical INR price per cadence (sanity checks, savings estimates)
+# cancel:    where to cancel; `email` enables cancellation drafts (Phase 5)
+# includes:  for bundles (telecom/credit-card plans): merchant ids included
+#
+# Prices and cancel links drift; treat them as hints and verify before acting.
+
+- id: netflix
+  name: Netflix
+  category: ott
+  aliases: [netflix, netflix.com]
+  domains: [netflix.com, account.netflix.com]
+  typical: {monthly: 649}
+  cancel: {url: "https://www.netflix.com/cancelplan"}
+
+- id: disney_hotstar
+  name: JioHotstar (Disney+ Hotstar)
+  category: ott
+  aliases: [hotstar, disney plus hotstar, disney+ hotstar, jiohotstar, jio hotstar, jiocinema]
+  domains: [hotstar.com, jiohotstar.com]
+  typical: {monthly: 299, yearly: 1499}
+  cancel: {url: "https://www.hotstar.com/in/mypage"}
+
+- id: amazon_prime
+  name: Amazon Prime
+  category: ott
+  aliases: [amazon prime, prime membership, prime video, primevideo]
+  typical: {monthly: 299, yearly: 1499}
+  cancel: {url: "https://www.amazon.in/mc/pipelines/cancellation"}
+
+- id: sonyliv
+  name: Sony LIV
+  category: ott
+  aliases: [sonyliv, sony liv]
+  domains: [sonyliv.com]
+  typical: {yearly: 1499}
+
+- id: zee5
+  name: ZEE5
+  category: ott
+  aliases: [zee5]
+  domains: [zee5.com]
+  typical: {yearly: 1499}
+
+- id: youtube_premium
+  name: YouTube Premium
+  category: ott
+  aliases: [youtube premium, youtubepremium, yt premium]
+  domains: [youtube.com]
+  typical: {monthly: 149}
+  cancel: {url: "https://www.youtube.com/paid_memberships"}
+
+- id: spotify
+  name: Spotify Premium
+  category: music
+  aliases: [spotify]
+  domains: [spotify.com]
+  typical: {monthly: 119}
+  cancel: {url: "https://www.spotify.com/account/subscription/"}
+
+- id: apple_services
+  name: Apple (iCloud+/Music/TV/One)
+  category: cloud
+  aliases: [apple.com/bill, apple services, icloud, apple music, apple tv, apple one, itunes]
+  typical: {monthly: 75}
+  cancel: {url: "https://support.apple.com/en-in/118428"}
+
+- id: google_one
+  name: Google One
+  category: cloud
+  aliases: [google one, googleone, google storage]
+  typical: {monthly: 130, yearly: 1300}
+  cancel: {url: "https://one.google.com/storage"}
+
+- id: google_ai
+  name: Google AI Pro (Gemini)
+  category: ai
+  aliases: [google ai pro, gemini advanced, google ai premium, gemini pro plan]
+  typical: {monthly: 1950}
+  cancel: {url: "https://one.google.com/storage"}
+
+- id: chatgpt
+  name: ChatGPT Plus
+  category: ai
+  aliases: [chatgpt, openai *chatgpt, openai]
+  domains: [openai.com, tm.openai.com]
+  typical: {monthly: 1999}
+  cancel: {url: "https://chatgpt.com/#settings/Subscription"}
+
+- id: claude
+  name: Claude Pro
+  category: ai
+  aliases: [claude.ai, anthropic, claude pro]
+  domains: [anthropic.com]
+  typical: {monthly: 1999}
+  cancel: {url: "https://claude.ai/settings/billing"}
+
+- id: microsoft_365
+  name: Microsoft 365
+  category: software
+  aliases: [microsoft 365, microsoft*365, office 365, msft *]
+  typical: {yearly: 6199}
+  cancel: {url: "https://account.microsoft.com/services"}
+
+- id: adobe
+  name: Adobe Creative Cloud
+  category: software
+  aliases: [adobe]
+  domains: [adobe.com]
+  typical: {monthly: 1675}
+  cancel: {url: "https://account.adobe.com/plans"}
+
+- id: canva
+  name: Canva Pro
+  category: software
+  aliases: [canva]
+  domains: [canva.com]
+  typical: {yearly: 3999}
+
+- id: notion
+  name: Notion
+  category: software
+  aliases: [notion.so, notion labs]
+  domains: [notion.so, makenotion.com]
+
+- id: linkedin_premium
+  name: LinkedIn Premium
+  category: professional
+  aliases: [linkedin premium, linkedin]
+  domains: [linkedin.com]
+  typical: {monthly: 1600}
+  cancel: {url: "https://www.linkedin.com/premium/manage/"}
+
+- id: audible
+  name: Audible
+  category: books
+  aliases: [audible]
+  typical: {monthly: 199}
+
+- id: kindle_unlimited
+  name: Kindle Unlimited
+  category: books
+  aliases: [kindle unlimited, kindle svcs]
+  typical: {monthly: 169}
+
+- id: swiggy_one
+  name: Swiggy One
+  category: food
+  aliases: [swiggy one, swiggyone]
+  typical: {quarterly: 299}
+
+- id: swiggy
+  name: Swiggy (orders)
+  category: food_orders
+  aliases: [swiggy]
+  domains: [swiggy.in]
+
+- id: zomato_gold
+  name: Zomato Gold
+  category: food
+  aliases: [zomato gold]
+  typical: {quarterly: 99}
+
+- id: zomato
+  name: Zomato (orders)
+  category: food_orders
+  aliases: [zomato]
+  domains: [zomato.com]
+
+- id: cultfit
+  name: cult.fit (cultpass)
+  category: fitness
+  aliases: [cultfit, cult.fit, cultpass, cult fit, curefit]
+  domains: [cult.fit, curefit.com]
+  typical: {monthly: 1499}
+  cancel: {email: "hello@cult.fit", url: "https://www.cult.fit/me/membership"}
+
+- id: times_prime
+  name: Times Prime
+  category: bundle
+  aliases: [times prime, timesprime]
+  typical: {yearly: 1199}
+
+- id: airtel_black
+  name: Airtel Black
+  category: telecom
+  aliases: [airtel black]
+  typical: {monthly: 1099}
+  includes: [disney_hotstar, amazon_prime]
+
+- id: airtel
+  name: Airtel
+  category: telecom
+  aliases: [airtel]
+  domains: [airtel.com, airtel.in]
+
+- id: jio
+  name: Jio
+  category: telecom
+  aliases: [jio recharge, reliance jio, jio postpaid, jio fiber, jiofiber]
+  domains: [jio.com]
+
+- id: tata_play
+  name: Tata Play
+  category: tv
+  aliases: [tata play, tataplay, tata sky]
+  typical: {monthly: 350}
+
+- id: safelife_insurance
+  name: SafeLife Insurance (demo)
+  category: insurance
+  aliases: [safelife]
+  domains: [safelife-insurance.example]
+  typical: {yearly: 12000}
+
+- id: amazon
+  name: Amazon (shopping)
+  category: shopping
+  aliases: [amazon pay, amazon.in, amazon]
+  domains: [amazon.in]
+
+- id: uber
+  name: Uber
+  category: transport
+  aliases: [uber]
+
+- id: bescom
+  name: BESCOM (electricity)
+  category: utilities
+  aliases: [bescom]
+
+# --- fee lines (forex leakage detector) ---------------------------------------
+- id: forex_markup
+  name: Foreign currency markup fee
+  category: fee
+  aliases: [markup fee on foreign currency, markup fee, foreign currency txn fee,
+            cross currency markup, dcc markup, forex markup, fcy markup]
+
+- id: gst_on_fee
+  name: GST on bank fee
+  category: fee
+  aliases: [igst on markup fee, igst on markup, gst on markup, cgst on markup, sgst on markup]

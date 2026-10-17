@@ -1,0 +1,7 @@
+{
+  "_comment": "Measured on live Gemini runs over the synthetic demo (22 emails, 21 SMS, 4 statements). Updated by `run_evals.py --live`; the auditor numbers come from `leak report --demo`.",
+  "extraction": {"model": "gemini-3.5-flash-lite", "documents_via_llm": 22, "llm_calls": 3,
+                 "input_tokens": 11322, "output_tokens": 7564, "usd": "0.0223", "inr": "1.96"},
+  "auditor": {"model": "gemini-3.1-pro-preview", "steps": 20, "input_tokens": 292510,
+              "cached_input_tokens": 195292, "output_tokens": 8101, "usd": "0.3307", "inr": "29.10"}
+}
