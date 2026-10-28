@@ -17,6 +17,7 @@ from leak.detect import run_detectors
 from leak.findings import Finding
 from leak.harness import AgentLoop, Budget, PermissionPolicy, RunResult
 from leak.ingest.scan import open_store
+from leak.llm.factory import make_provider
 from leak.llm.provider import LLMProvider
 from leak.privacy.guard import EgressGuard
 from leak.store import Store
@@ -51,11 +52,9 @@ def run_audit(
     if not use_agent:
         return result
     if provider is None:
-        if not settings.gemini_api_key:
-            return result  # no key: detector-only report
-        from leak.llm.gemini import GeminiProvider
-
-        provider = GeminiProvider(settings.gemini_api_key)
+        provider = make_provider(settings)
+        if provider is None:
+            return result  # no LLM configured: detector-only report
 
     guard = EgressGuard(redactor)
     a = settings.agent

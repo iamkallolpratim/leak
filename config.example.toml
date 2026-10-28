@@ -2,6 +2,8 @@
 # Secrets (GEMINI_API_KEY) go in .env, never here.
 
 [llm]
+# "gemini": used only when GEMINI_API_KEY is set, and only ever sent masked text.
+# "none": fully local even if a key exists (bank plugins, OCR, SMS rules, detectors).
 provider = "gemini"
 # Model IDs are config, not code. Check current IDs at
 # https://ai.google.dev/gemini-api/docs/models  (checked 2026-10-17)
@@ -60,6 +62,14 @@ enable_actions = false        # true adds gmail.compose (drafts only; no send to
 # PDF passwords: set LEAK_PDF_PASSWORDS="pw1,pw2" in .env (preferred) or list here.
 passwords = []
 llm_fallback = true           # unknown banks: send *redacted text* to extract_model
+
+# Scanned PDFs and photos (.png/.jpg/.webp/.tiff) are read locally with PaddleOCR.
+# First use downloads its models (~once, no user data); after that it runs offline.
+[statements.ocr]
+enabled = true
+lang = "en"
+min_score = 0.5               # drop text the recogniser is unsure of
+dpi = 300                     # render resolution for scanned PDF pages
 
 [sms]
 # paths = ["~/Downloads/sms-20261001.xml"]   # Android "SMS Backup & Restore" export

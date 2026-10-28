@@ -6,7 +6,14 @@ contain its amount. A parser is better: free, exact, and offline. Most take ~20 
 
 ## 1. Look at the text, not the PDF
 
-Parsers see what `pdfplumber` extracts, one string per page:
+Parsers see what `pdfplumber` extracts, one string per page. Scanned pages and
+photos go through local OCR (PaddleOCR) first and come out in the same shape:
+one line per visual row, words joined by single spaces. OCR can merge or split
+spacing differently, so match columns with `\s+`, not fixed widths. To see what
+OCR gives you, use `load_statement_pages` instead:
+`uv run python -c "from pathlib import Path; from leak.ingest.statements import load_statement_pages; print(load_statement_pages(Path('scan.jpg'))[0][0])"`
+
+For a text PDF:
 
 ```bash
 uv run python -c "

@@ -17,6 +17,7 @@ from leak.extract.extractor import (
 from leak.ingest.progress import Progress
 from leak.ingest.scan import open_store
 from leak.ledger.normalize import LedgerReport, build_ledger
+from leak.llm.factory import make_provider
 from leak.llm.provider import LLMProvider
 
 _REPO_CASSETTES = Path(__file__).resolve().parents[2] / "evals" / "cassettes"
@@ -42,10 +43,8 @@ def run_extract(
     progress: Progress | None = None,
 ) -> ExtractRunReport:
     store, redactor = open_store(settings)
-    if provider is None and settings.gemini_api_key:
-        from leak.llm.gemini import GeminiProvider
-
-        provider = GeminiProvider(settings.gemini_api_key)
+    if provider is None:
+        provider = make_provider(settings)
     extractor = Extractor(
         provider,
         settings.llm.extract_model,
