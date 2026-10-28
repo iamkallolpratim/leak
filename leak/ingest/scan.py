@@ -16,7 +16,9 @@ from leak.ingest.statements import (
     StatementError,
     StatementResult,
     ingest_statement,
+    statement_files,
 )
+from leak.llm.factory import make_provider
 from leak.privacy.redact import Redactor, Vault
 from leak.store import Store
 
@@ -72,11 +74,10 @@ def run_scan(
         ).sync()
 
     fallback = None
-    if settings.statements.llm_fallback and settings.gemini_api_key:
-        from leak.llm.gemini import GeminiProvider
-
+    provider = make_provider(settings) if settings.statements.llm_fallback else None
+    if provider is not None:
         fallback = LLMStatementParser(
-            GeminiProvider(settings.gemini_api_key),
+            provider,
             settings.llm.extract_model,
             redactor,
             budget=settings.make_budget(),
@@ -92,6 +93,7 @@ def run_scan(
                 redactor=redactor,
                 passwords=settings.statements.all_passwords(),
                 fallback=fallback,
+                ocr=settings.statements.ocr,
             )
             report.statements.append(r)
             progress.advance("statements", detail=f"{path.name} · {r.parser}")
@@ -114,6 +116,6 @@ def run_scan(
 def demo_inputs(demo_dir: Path = DEMO_DIR) -> dict[str, Any]:
     return {
         "eml_dir": demo_dir / "emails",
-        "statement_paths": sorted((demo_dir / "statements").glob("*.pdf")),
+        "statement_paths": statement_files(demo_dir / "statements"),
         "sms_paths": sorted((demo_dir / "sms").glob("*.xml")),
     }

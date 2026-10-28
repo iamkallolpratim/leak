@@ -61,6 +61,10 @@ Scans a synthetic inbox, four password-protected bank/card statements and an SMS
 
 ### Your own data
 
+Gemini is optional. Without `GEMINI_API_KEY` (or with `[llm] provider = "none"`) everything runs on your machine: bank-plugin statement parsing, OCR of scanned PDFs and photos (PaddleOCR, local), SMS rules and the detectors. With a key, Gemini adds email extraction, unknown-bank statements and the auditor agent, and it only ever receives masked text: account and card numbers, names, phones, emails and UPI IDs become tokens like `[ACCT_1]` before anything leaves, and the egress guard refuses to send a payload that still looks like PII. Statement PDFs and images are never uploaded.
+
+Python 3.12 or 3.13 (PaddlePaddle has no wheels for newer versions yet). PaddleOCR downloads its models (~130 MB, to `~/.paddlex`) the first time it reads a scan.
+
 ```bash
 git clone https://github.com/<you>/leak && cd leak
 uv sync
@@ -70,7 +74,7 @@ echo 'GEMINI_API_KEY=...' > .env          # https://aistudio.google.com/apikey
 
 uv run leak gmail auth                                   # see "Gmail setup" below
 uv run leak scan --gmail                                 # add --limit 100 to sample first
-uv run leak scan --statements ~/Downloads/statements     # PDF passwords: LEAK_PDF_PASSWORDS="a,b" in .env
+uv run leak scan --statements ~/Downloads/statements     # PDFs, scans, photos; passwords: LEAK_PDF_PASSWORDS="a,b" in .env
 uv run leak scan --sms ~/Downloads/sms-backup.xml        # Android "SMS Backup & Restore" export
 uv run leak extract                                      # Flash: receipts, renewals, price changes (cached)
 uv run leak report                                       # detectors + Pro auditor → ranked report
@@ -95,7 +99,7 @@ Testing-mode tokens expire after 7 days; Leak notices and asks you to log in aga
 flowchart LR
   subgraph Ingest["Ingest (local)"]
     G[Gmail] --> R
-    P[PDF statements<br/>pikepdf + pdfplumber<br/>bank plugins] --> R
+    P[PDF / image statements<br/>pikepdf + pdfplumber<br/>PaddleOCR for scans<br/>bank plugins] --> R
     S[SMS backup XML] --> R
     R[Redactor<br/>PII → tokens<br/>vault stays local] --> DB[(SQLite)]
   end
@@ -217,7 +221,7 @@ uv run python demo/generate_sample_data.py   # regenerate synthetic data + label
 - **Ollama-only mode**: same `LLMProvider` protocol, fully offline extraction and auditing
 - **WhatsApp / Telegram bot** for the monthly "here's what leaked" summary and one-tap approvals
 - **"Unused" detector**: no product-usage emails in 90 days for a paid service
-- OCR for scanned statements (locally), encrypted vault (OS keychain), UPI mandate list import
+- Encrypted vault (OS keychain), UPI mandate list import
 
 ## License
 

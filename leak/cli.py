@@ -32,6 +32,7 @@ from leak.demo_tools import build_toy_registry
 from leak.harness import AgentLoop, ReplayProvider, load_trace, render_replay
 from leak.harness.permissions import PermissionPolicy
 from leak.harness.trace import list_runs, trace_path
+from leak.llm.factory import make_provider
 from leak.llm.provider import LLMProvider, LLMResponse, ToolCall, Usage
 
 app = typer.Typer(no_args_is_help=True, help="Leak: find the money leaking out of your accounts.")
@@ -77,9 +78,10 @@ def demo_harness(
     s = load_settings()
     model = s.llm.reason_model
     if live:
-        from leak.llm.gemini import GeminiProvider
-
-        provider: LLMProvider = GeminiProvider(s.gemini_api_key)
+        live_provider = make_provider(s)
+        if live_provider is None:
+            raise typer.BadParameter('--live needs GEMINI_API_KEY and [llm] provider = "gemini"')
+        provider: LLMProvider = live_provider
     else:
         provider = _scripted_demo(model)
     budget = s.make_budget()
@@ -147,6 +149,7 @@ def scan(
 ) -> None:
     """Ingest emails, statements and SMS into the local store (redacted)."""
     from leak.ingest.scan import DEMO_DIR, demo_inputs, run_scan
+    from leak.ingest.statements import statement_files
 
     s = load_settings(overlay=DEMO_DIR / "demo.toml" if demo else None)
     inputs: dict[str, object] = demo_inputs() if demo else {}
@@ -154,7 +157,7 @@ def scan(
         stmt = statements or s.statements.dir
         if stmt:
             stmt = stmt.expanduser()
-            inputs["statement_paths"] = sorted(stmt.glob("*.pdf")) if stmt.is_dir() else [stmt]
+            inputs["statement_paths"] = statement_files(stmt)
         inputs["sms_paths"] = [p.expanduser() for p in (sms or s.sms.paths)]
         inputs["eml_dir"] = emails
         if gmail:
@@ -269,7 +272,7 @@ def report(
     def ask(question: str) -> str:
         return str(typer.prompt(f"\n[auditor asks] {question}"))
 
-    use_agent = agent and bool(s.gemini_api_key)
+    use_agent = agent and make_provider(s) is not None
     label = f"Auditing with {s.llm.reason_model}…" if use_agent else "Running detectors…"
     with console.status(label):
         res = run_audit(s, use_agent=use_agent, ask_user=ask if sys.stdin.isatty() else None)
@@ -288,7 +291,7 @@ def report(
         for a in r.pending_actions:
             console.print(f"[magenta]awaiting approval[/] {a.id}: {a.tool}({a.args})")
     elif agent:
-        console.print("[dim]auditor agent skipped: set GEMINI_API_KEY in .env to enable it[/]")
+        console.print("[dim]auditor agent skipped: no LLM configured (GEMINI_API_KEY in .env)[/]")
 
 
 def load_trace_budget(path: Path | None) -> dict[str, str]:

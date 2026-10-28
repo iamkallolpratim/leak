@@ -12,6 +12,7 @@ import os
 import tomllib
 from decimal import Decimal
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -19,13 +20,16 @@ from pydantic import BaseModel, Field
 from leak.harness.budget import Budget, ModelPrice
 from leak.harness.permissions import Permission
 from leak.ingest.gmail import DEFAULT_QUERY
+from leak.ingest.ocr import OcrConfig
 from leak.privacy.redact import PrivacyProfile
 
 _PKG_DIR = Path(__file__).resolve().parent
 
 
 class LLMConfig(BaseModel):
-    provider: str = "gemini"
+    # "none" keeps everything on this machine even when GEMINI_API_KEY is set:
+    # bank plugins, OCR, SMS rules and the detectors still run; LLM steps are skipped.
+    provider: Literal["gemini", "none"] = "gemini"
     extract_model: str
     reason_model: str
     prices: dict[str, ModelPrice] = Field(default_factory=dict)
@@ -66,6 +70,7 @@ class StatementsConfig(BaseModel):
     # Prefer LEAK_PDF_PASSWORDS="pw1,pw2" in .env over putting them here.
     passwords: list[str] = Field(default_factory=list)
     llm_fallback: bool = True
+    ocr: OcrConfig = Field(default_factory=OcrConfig)
 
     def all_passwords(self) -> list[str]:
         env = os.environ.get("LEAK_PDF_PASSWORDS", "")

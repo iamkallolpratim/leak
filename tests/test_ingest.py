@@ -270,3 +270,77 @@ def test_cli_limit_flag(tmp_path, monkeypatch):
     assert out.exit_code == 0, out.output
     assert "3 emails" in out.output
     assert CliRunner().invoke(app, ["scan", "--demo", "--limit", "0"]).exit_code != 0
+
+
+# --- OCR (fake engine; see test_ocr.py) -----------------------------------------
+
+
+@pytest.fixture
+def hdfc_pages():
+    from leak.ingest.statements import pdf_pages_text
+
+    return pdf_pages_text(unlock_pdf(STMTS / "hdfc_savings_apr-sep_2026.pdf", PW))
+
+
+def _install_fake_ocr(monkeypatch, pages):
+    from leak.ingest import ocr
+    from tests.test_ocr import FakeEngine
+
+    engine = FakeEngine(pages)
+    monkeypatch.setattr(ocr, "_engine", lambda lang: engine)
+    return engine
+
+
+def test_image_statement_is_ocrd_and_parsed(env, tmp_path, monkeypatch, hdfc_pages):
+    from PIL import Image
+
+    store, red = env
+    engine = _install_fake_ocr(monkeypatch, ["\n".join(hdfc_pages)])
+    img = tmp_path / "hdfc_photo.jpg"
+    Image.new("RGB", (200, 300), "white").save(img)
+    res = ingest_statement(img, store=store, redactor=red)
+    assert (res.parser, res.text_source, res.transactions) == ("hdfc_savings", "ocr", 50)
+    assert engine.calls == 1
+    doc = next(d for d in store.documents() if d.source == "statement")
+    assert doc.meta["text_source"] == "ocr"
+
+
+def test_scanned_pdf_pages_are_ocrd(env, tmp_path, monkeypatch, hdfc_pages):
+    from fpdf import FPDF
+    from PIL import Image
+
+    store, red = env
+    engine = _install_fake_ocr(monkeypatch, hdfc_pages)
+    pdf = FPDF()
+    for _ in hdfc_pages:  # image-only pages: no text layer at all
+        pdf.add_page()
+        pdf.image(Image.new("RGB", (60, 80), "white"), x=10, y=10, w=60)
+    path = tmp_path / "scan.pdf"
+    pdf.output(str(path))
+    res = ingest_statement(path, store=store, redactor=red)
+    assert (res.parser, res.text_source, res.transactions) == ("hdfc_savings", "ocr", 50)
+    assert engine.calls == len(hdfc_pages)
+
+
+def test_text_pdf_never_touches_ocr(env, monkeypatch):
+    from leak.ingest import ocr
+
+    def boom(lang):
+        raise AssertionError("OCR used on a PDF with a text layer")
+
+    monkeypatch.setattr(ocr, "_engine", boom)
+    res = ingest_statement(STMTS / "hdfc_savings_apr-sep_2026.pdf", store=env[0], redactor=env[1],
+                           passwords=PW)  # fmt: skip
+    assert res.text_source == "pdf"
+
+
+def test_blank_scan_is_refused(env, tmp_path, monkeypatch):
+    from PIL import Image
+
+    from leak.ingest.statements import UnsupportedStatement
+
+    _install_fake_ocr(monkeypatch, [""])
+    img = tmp_path / "blank.png"
+    Image.new("RGB", (50, 50), "white").save(img)
+    with pytest.raises(UnsupportedStatement, match="no text found"):
+        ingest_statement(img, store=env[0], redactor=env[1])

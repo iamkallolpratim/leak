@@ -10,7 +10,7 @@ classifiers = [
     "Topic :: Office/Business :: Financial",
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"  # paddlepaddle ships cp312/cp313 wheels only
 license = { text = "MIT" }
 dependencies = [
     "google-genai>=1.0",
@@ -24,9 +24,11 @@ dependencies = [
     "google-auth-oauthlib>=1.5.0",
     "defusedxml>=0.7.1",
     "rich>=15.0.0",
-    "pyyaml>=6.0.3",
+    "pyyaml>=6.0",
     "fastapi>=0.143.3",
     "uvicorn>=0.54.0",
+    "paddleocr>=3.7",
+    "paddlepaddle>=3.3",
 ]
 
 [project.scripts]
@@ -86,11 +88,12 @@ module = ["leak.harness.*", "leak.llm.*"]
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["google_auth_oauthlib.*", "googleapiclient.*"]
+module = ["google_auth_oauthlib.*", "googleapiclient.*", "paddleocr.*", "pypdfium2.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["ocr: runs the real PaddleOCR engine (downloads models; LEAK_TEST_OCR=1)"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "config.example.toml" = "leak/config.example.toml"
