@@ -1,6 +1,6 @@
 [project]
 name = "leak-audit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local-first AI agent that finds recurring charges, hidden fees and forgotten subscriptions in your email, bank statements and SMS."
 keywords = ["agent", "llm", "gemini", "personal-finance", "subscriptions", "privacy", "india"]
 classifiers = [

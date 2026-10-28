@@ -31,3 +31,4 @@ config.toml
 
 # macOS
 .DS_Store
+.git
