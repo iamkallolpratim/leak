@@ -1,8 +1,8 @@
 [project]
 name = "leak-audit"
-version = "0.1.1"
+version = "0.1.2"
 description = "Local-first AI agent that finds recurring charges, hidden fees and forgotten subscriptions in your email, bank statements and SMS."
-keywords = ["agent", "llm", "gemini", "personal-finance", "subscriptions", "privacy", "india"]
+keywords = ["agent", "llm", "openrouter", "personal-finance", "subscriptions", "privacy", "india"]
 classifiers = [
     "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
@@ -13,7 +13,6 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"  # paddlepaddle ships cp312/cp313 wheels only
 license = { text = "MIT" }
 dependencies = [
-    "google-genai>=1.0",
     "pydantic>=2.7",
     "typer>=0.12",
     "python-dotenv>=1.0",
@@ -29,6 +28,9 @@ dependencies = [
     "uvicorn>=0.54.0",
     "paddleocr>=3.7",
     "paddlepaddle>=3.3",
+    "openai>=3.41.0",
+    "httpx2>=2.16.0",  # openai's HTTP client; leak.llm.openrouter uses it directly
+    "keyring>=25.7.0",
 ]
 
 [project.scripts]

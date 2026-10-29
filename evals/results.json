@@ -1,5 +1,5 @@
 {
-  "model": "gemini-3.5-flash-lite",
+  "model": "google/gemini-3.5-flash-lite",
   "extraction": {
     "cancellation": {
       "precision": 1.0,
@@ -68,7 +68,7 @@
     "unresolved_merchants": 42
   },
   "live_costs": {
-    "_comment": "Measured on live Gemini runs over the synthetic demo (22 emails, 21 SMS, 4 statements). Updated by `run_evals.py --live`; the auditor numbers come from `leak report --demo`.",
+    "_comment": "Measured 2026-10-17 on live runs over the synthetic demo (22 emails, 21 SMS, 4 statements), calling Google's Gemini API directly, before Leak moved to OpenRouter. Same models are now addressed as google/<id> via OpenRouter (ZDR routing); re-measure with `run_evals.py --live` and `leak report --demo`. Local meter, not a bill.",
     "extraction": {
       "model": "gemini-3.5-flash-lite",
       "documents_via_llm": 22,

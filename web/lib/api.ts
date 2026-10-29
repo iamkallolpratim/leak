@@ -30,6 +30,13 @@ export type Summary = {
   actionable: number;
   pending_actions: number;
 };
+export type ShareCard = {
+  total_inr: number;
+  kinds: string[];
+  rows: { name: string; label: string; annual_inr: number }[];
+  more: number;
+  text: string;
+};
 export type Preview =
   | { kind: "email"; to: string; subject: string; body: string; cancel_url: string | null }
   | { kind: "ics"; ics: string; date: string }
@@ -79,6 +86,8 @@ async function authed<T>(path: string, method: string, body?: unknown): Promise<
 export const api = {
   summary: () => get<Summary>("/api/summary"),
   findings: () => get<Finding[]>("/api/findings"),
+  shareCard: (names: boolean) => get<ShareCard>(`/api/share-card?names=${names}`),
+  shareCardSvg: (names: boolean) => `/api/share-card.svg?names=${names}`,
   finding: (id: string) => get<FindingDetail>(`/api/findings/${id}`),
   unmask: (eid: string) => authed<{ text: string }>(`/api/evidence/${eid}/unmasked`, "GET"),
   requestAction: (fid: string, tool: string) => authed<Action>(`/api/findings/${fid}/actions`, "POST", { tool }),

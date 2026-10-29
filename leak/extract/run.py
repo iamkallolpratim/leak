@@ -25,9 +25,14 @@ _PKG_CASSETTES = Path(__file__).resolve().parents[1] / "_cassettes"  # bundled i
 CASSETTE_DIR = _REPO_CASSETTES if _REPO_CASSETTES.is_dir() else _PKG_CASSETTES
 
 
+def cassette_path(model: str) -> Path:
+    """`google/gemini-3.5-flash-lite` -> extract-google--gemini-3.5-flash-lite.jsonl"""
+    return CASSETTE_DIR / f"extract-{model.replace('/', '--')}.jsonl"
+
+
 def demo_cache(model: str) -> JsonlCache:
     """The demo replays the recorded eval cassette: works with no API key, costs ₹0."""
-    return JsonlCache(CASSETTE_DIR / f"extract-{model}.jsonl")
+    return JsonlCache(cassette_path(model))
 
 
 class ExtractRunReport(BaseModel):

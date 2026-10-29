@@ -1,7 +1,7 @@
 """Leak evals: extraction precision/recall/F1, ledger dedupe, cost per run.
 
     uv run python evals/run_evals.py            # offline: replays the committed cassette
-    uv run python evals/run_evals.py --live     # calls Gemini for cache misses, records them
+    uv run python evals/run_evals.py --live     # your OpenRouter key on cache misses; records
 
 Ground truth comes from demo/generate_sample_data.py (it writes
 evals/fixtures/demo_labels.jsonl alongside the synthetic data), so labels can't
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import tempfile
 from collections import Counter
@@ -26,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 
 from leak.config import load_settings  # noqa: E402
 from leak.extract.extractor import JsonlCache  # noqa: E402
-from leak.extract.run import run_extract  # noqa: E402
+from leak.extract.run import cassette_path, run_extract  # noqa: E402
 from leak.extract.schemas import DocExtraction, Record  # noqa: E402
 from leak.ingest.models import Document  # noqa: E402
 from leak.ingest.scan import DEMO_DIR, demo_inputs, open_store, run_scan  # noqa: E402
@@ -35,7 +34,6 @@ from leak.ledger.merchants import default_catalog, resolve_extracted  # noqa: E4
 LABELS = ROOT / "evals" / "fixtures" / "demo_labels.jsonl"
 EXPECTED_FINDINGS = ROOT / "evals" / "fixtures" / "demo_findings.json"
 LIVE_COSTS = ROOT / "evals" / "live_costs.json"
-CASSETTES = ROOT / "evals" / "cassettes"
 RESULTS = ROOT / "evals" / "results.json"
 
 Key = tuple[str, str | None, str | None]  # (kind, merchant id, amount)
@@ -81,7 +79,9 @@ def prf(tp: int, fp: int, fn: int) -> dict[str, float]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--live", action="store_true", help="call Gemini on cassette misses")
+    ap.add_argument(
+        "--live", action="store_true", help="call OpenRouter (your own key) on cassette misses"
+    )
     args = ap.parse_args()
 
     labels = [json.loads(line) for line in LABELS.read_text().splitlines() if line.strip()]
@@ -97,8 +97,8 @@ def main() -> int:
         s.paths.data_dir = Path(tmp)
         run_scan(s, **demo_inputs())
         if not args.live:
-            os.environ.pop("GEMINI_API_KEY", None)  # offline: cassette only, never the network
-        cassette = JsonlCache(CASSETTES / f"extract-{s.llm.extract_model}.jsonl")
+            s.llm.provider = "none"  # offline: cassette only, never the network or the keychain
+        cassette = JsonlCache(cassette_path(s.llm.extract_model))
         report = run_extract(s, cache=cassette)
         store, _ = open_store(s)
         from leak.agent.auditor import detect_only

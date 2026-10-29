@@ -252,8 +252,11 @@ class Extractor:
                 system=SYSTEM,
                 messages=[Message(role="user", text=prompt)],
                 response_schema=BatchExtraction,
+                before_request=self.budget.gate,  # every attempt: funds / retry ceiling
             )
-        except LLMError:
+        except LLMError as e:
+            if e.spent is not None:  # paid for, even though it failed
+                self.budget.charge(e.spent, self.model)
             if len(batch) > 1:  # one bad doc shouldn't sink its neighbours: split
                 mid = len(batch) // 2
                 self._extract_batch(batch[:mid], results, stats, advance)

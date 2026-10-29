@@ -24,7 +24,7 @@ import pdfplumber
 import pikepdf
 from pydantic import BaseModel, Field
 
-from leak.harness.budget import Budget
+from leak.harness.budget import Budget, BudgetExceeded
 from leak.ingest.banks import ParsedLine, ParsedStatement, detect_parser
 from leak.ingest.models import Document, RawTransaction
 from leak.ingest.ocr import (
@@ -35,7 +35,7 @@ from leak.ingest.ocr import (
     ocr_images,
     render_pdf_pages,
 )
-from leak.llm.provider import LLMProvider, Message
+from leak.llm.provider import LLMError, LLMProvider, Message
 from leak.privacy.guard import EgressGuard, GuardedProvider
 from leak.privacy.redact import TOKEN_RE, Redactor
 from leak.store import Store
@@ -162,6 +162,7 @@ class LLMStatementParser:
             system=FALLBACK_SYSTEM,
             messages=[Message(role="user", text=numbered)],
             response_schema=FallbackStatement,
+            before_request=self.budget.gate if self.budget else None,
         )
         if self.budget:
             self.budget.charge(resp.usage, self.model)
@@ -229,7 +230,10 @@ def ingest_statement(
     if parser_cls is not None:
         parsed = parser_cls().parse(pages)
     elif fallback is not None:
-        parsed = fallback.parse(pages)
+        try:
+            parsed = fallback.parse(pages)
+        except (LLMError, BudgetExceeded) as e:  # a failed call is a skipped file, not 0 rows
+            raise UnsupportedStatement(f"{path.name}: LLM fallback failed: {e}") from None
     else:
         raise UnsupportedStatement(f"{path.name}: no bank parser matched and LLM fallback is off")
 

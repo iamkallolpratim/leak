@@ -11,7 +11,7 @@ from collections.abc import Callable, Sequence
 
 from pydantic import BaseModel
 
-from leak.llm.provider import LLMError, LLMResponse, Message, ToolSpec
+from leak.llm.provider import BeforeRequest, LLMError, LLMResponse, Message, ToolSpec
 
 Script = Sequence[LLMResponse] | Callable[[list[Message]], LLMResponse]
 
@@ -23,6 +23,7 @@ class ScriptedProvider:
         self._script = script
         self._i = 0
         self.requests: list[list[Message]] = []  # what the "model" saw, per call
+        self.systems: list[str] = []
 
     def generate(
         self,
@@ -32,7 +33,12 @@ class ScriptedProvider:
         messages: list[Message],
         tools: list[ToolSpec] | None = None,
         response_schema: type[BaseModel] | None = None,
+        before_request: BeforeRequest | None = None,
     ) -> LLMResponse:
+        # Behave like a network provider: the gate runs (and may block) first.
+        if before_request is not None:
+            system, messages = before_request(0, system, messages)
+        self.systems.append(system)
         self.requests.append([m.model_copy(deep=True) for m in messages])
         if callable(self._script):
             return self._script(messages)

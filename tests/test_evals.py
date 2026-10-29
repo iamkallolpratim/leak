@@ -7,7 +7,12 @@ ROOT = Path(__file__).parents[1]
 
 def test_evals_offline_from_cassette():
     """CI gate: evals replay the committed cassette, need no key, cost nothing."""
-    env = {"PATH": "/usr/bin:/bin", "HOME": str(ROOT), "GEMINI_API_KEY": ""}
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(ROOT),
+        "OPENROUTER_API_KEY": "",
+        "LEAK_CONFIG": str(ROOT / "config.example.toml"),  # not the developer's config.toml
+    }
     out = subprocess.run(
         [sys.executable, "evals/run_evals.py"],
         cwd=ROOT,

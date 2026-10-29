@@ -3,6 +3,9 @@
 Commands:
     leak scan [--demo] [--gmail] [--statements DIR] [--sms FILE] [--limit N]
     leak gmail auth                one-time OAuth with your own GCP client
+    leak llm key set|replace|validate|remove   your own OpenRouter key (OS keychain)
+    leak llm status                which key/models/routing this profile uses
+    leak llm models                check configured models against OpenRouter's ZDR catalog
     leak demo-harness [--live]     run the harness with toy tools
     leak trace list                list recorded runs
     leak trace replay <run_id>     print a run step by step
@@ -11,6 +14,7 @@ Commands:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -32,7 +36,8 @@ from leak.demo_tools import build_toy_registry
 from leak.harness import AgentLoop, ReplayProvider, load_trace, render_replay
 from leak.harness.permissions import PermissionPolicy
 from leak.harness.trace import list_runs, trace_path
-from leak.llm.factory import make_provider
+from leak.llm.credentials import CredentialError, KeyStore
+from leak.llm.factory import ModelConfigError, make_provider
 from leak.llm.provider import LLMProvider, LLMResponse, ToolCall, Usage
 
 app = typer.Typer(no_args_is_help=True, help="Leak: find the money leaking out of your accounts.")
@@ -40,7 +45,23 @@ trace_app = typer.Typer(no_args_is_help=True, help="Inspect and replay run trace
 app.add_typer(trace_app, name="trace")
 gmail_app = typer.Typer(no_args_is_help=True, help="Gmail connection.")
 app.add_typer(gmail_app, name="gmail")
+llm_app = typer.Typer(no_args_is_help=True, help="Your OpenRouter key, models and routing.")
+app.add_typer(llm_app, name="llm")
+key_app = typer.Typer(no_args_is_help=True, help="Store, check or remove your OpenRouter key.")
+llm_app.add_typer(key_app, name="key")
 console = Console()
+
+NO_KEY_HINT = "no OpenRouter key for this profile (`leak llm key set`; `leak llm status`)"
+
+
+def _provider(s: Settings) -> LLMProvider | None:
+    """make_provider, with key/config problems shown as a clear one-liner."""
+    try:
+        return make_provider(s)
+    except (CredentialError, ModelConfigError) as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from None
+
 
 DEMO_SYSTEM = (
     "You are a test agent for the Leak harness. Use the tools to answer. "
@@ -71,17 +92,24 @@ def _scripted_demo(model: str) -> LLMProvider:
 
 @app.command("demo-harness")
 def demo_harness(
-    live: bool = typer.Option(False, help="Use real Gemini (needs GEMINI_API_KEY)."),
+    live: bool = typer.Option(False, help="Use OpenRouter with your own key (`leak llm key set`)."),
     max_steps: int | None = typer.Option(None, help="Override step budget."),
 ) -> None:
     """Run the harness end to end with toy tools."""
     s = load_settings()
     model = s.llm.reason_model
+    egress = None
     if live:
-        live_provider = make_provider(s)
+        live_provider = _provider(s)
         if live_provider is None:
-            raise typer.BadParameter('--live needs GEMINI_API_KEY and [llm] provider = "gemini"')
+            raise typer.BadParameter(
+                f'--live needs [llm] provider = "openrouter" and {NO_KEY_HINT}'
+            )
         provider: LLMProvider = live_provider
+        from leak.ingest.scan import open_store
+        from leak.privacy.guard import EgressGuard
+
+        egress = EgressGuard(open_store(s)[1]).filter  # toy data, same guard as real runs
     else:
         provider = _scripted_demo(model)
     budget = s.make_budget()
@@ -95,6 +123,7 @@ def demo_harness(
         trace_dir=s.trace_dir,
         system=DEMO_SYSTEM,
         policy=PermissionPolicy(s.permissions),
+        egress=egress,
     )
     result = loop.run(DEMO_PROMPT)
     typer.echo(f"status:  {result.status}" + (f" ({result.reason})" if result.reason else ""))
@@ -272,10 +301,16 @@ def report(
     def ask(question: str) -> str:
         return str(typer.prompt(f"\n[auditor asks] {question}"))
 
-    use_agent = agent and make_provider(s) is not None
+    provider = _provider(s) if agent else None
+    use_agent = provider is not None
     label = f"Auditing with {s.llm.reason_model}…" if use_agent else "Running detectors…"
     with console.status(label):
-        res = run_audit(s, use_agent=use_agent, ask_user=ask if sys.stdin.isatty() else None)
+        res = run_audit(
+            s,
+            provider=provider,
+            use_agent=use_agent,
+            ask_user=ask if sys.stdin.isatty() else None,
+        )
     store, _ = open_store(s)
     render(store, console, show_evidence=evidence)
 
@@ -283,7 +318,11 @@ def report(
     if res.agent:
         r = res.agent
         b = load_trace_budget(r.trace_path)
-        cost = f"${b.get('spent_usd', '?')} (₹{b.get('spent_inr', '?')})"
+        cost = (
+            f"${b.get('spent_usd', '?')} (₹{b.get('spent_inr', '?')}) by Leak's meter, "
+            f"${b.get('reported_usd', '?')} of it as reported by OpenRouter; "
+            "your OpenRouter account has the actual bill"
+        )
         console.print(f"auditor: {r.status} in {r.steps} steps · {cost}")
         console.print(f"trace: leak trace replay {r.run_id}")
         if r.reason:
@@ -291,7 +330,7 @@ def report(
         for a in r.pending_actions:
             console.print(f"[magenta]awaiting approval[/] {a.id}: {a.tool}({a.args})")
     elif agent:
-        console.print("[dim]auditor agent skipped: no LLM configured (GEMINI_API_KEY in .env)[/]")
+        console.print(f"[dim]auditor agent skipped: {NO_KEY_HINT}[/]")
 
 
 def load_trace_budget(path: Path | None) -> dict[str, str]:
@@ -362,6 +401,29 @@ def actions_reject(
 
 
 @app.command()
+def card(
+    demo: bool = typer.Option(False, help="Use the demo database."),
+    out: Path = typer.Option(Path("leak-card.svg"), help="Where to write the SVG."),
+    names: bool = typer.Option(True, "--names/--no-names", help="Show catalog merchant names."),
+) -> None:
+    """Write the shareable Leak Card: totals and well-known merchant names only."""
+    from leak.ingest.scan import DEMO_DIR, open_store
+    from leak.report import report_findings
+    from leak.share import CardPrivacyError, build_card, render_svg
+
+    s = load_settings(overlay=DEMO_DIR / "demo.toml" if demo else None)
+    store, _ = open_store(s)
+    try:
+        c = build_card(report_findings(store), names=names)
+    except CardPrivacyError as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from e
+    out.write_text(render_svg(c), encoding="utf-8")
+    console.print(f"Leak Card → {out}  (PNG + share buttons: `leak serve`)")
+    console.print(f"[dim]{c.share_text()}[/]")
+
+
+@app.command()
 def serve(
     demo: bool = typer.Option(False, help="Serve the demo database."),
     port: int = typer.Option(8765, help="Port on 127.0.0.1."),
@@ -393,7 +455,7 @@ def serve(
 @app.command()
 def demo(
     serve_ui: bool = typer.Option(True, "--serve/--no-serve", help="Open the dashboard after."),
-    agent: bool = typer.Option(True, help="Run the auditor agent if GEMINI_API_KEY is set (~₹30)."),
+    agent: bool = typer.Option(True, help="Run the auditor agent if you've set an OpenRouter key."),
     port: int = typer.Option(8765, help="Dashboard port."),
 ) -> None:
     """The whole pipeline on synthetic data: scan → extract → report → dashboard."""
@@ -422,6 +484,190 @@ def _free_port(start: int, tries: int = 20) -> int:
             if sock.connect_ex(("127.0.0.1", p)) != 0:
                 return p
     raise typer.BadParameter(f"no free port in {start}-{start + tries - 1}; pass --port")
+
+
+# --- leak llm: BYOK OpenRouter key ------------------------------------------------------
+
+
+def _key_store(s: Settings) -> KeyStore:
+    return KeyStore(s.profile_id)
+
+
+def _prompt_key() -> str:
+    # Hidden prompt, never argv (shell history, `ps`). Piped stdin works for scripts.
+    return str(typer.prompt("OpenRouter API key (input hidden)", hide_input=True)).strip()
+
+
+def _key_info(key: str, s: Settings) -> dict[str, object]:
+    """GET /key with this key: sends no prompt, no financial data."""
+    from leak.llm.openrouter import OpenRouterProvider
+
+    p = OpenRouterProvider(key, timeout=min(s.llm.timeout_s, 30.0), max_retries=0)
+    try:
+        return p.key_info()
+    finally:
+        p.close()
+
+
+def _print_key_info(info: dict[str, object]) -> None:
+    limit = info.get("limit_remaining")
+    console.print(
+        f"[green]key OK[/] · label {info.get('label') or '-'} · "
+        f"credit limit left: {'unlimited' if limit is None else f'${limit}'} · "
+        f"used: ${info.get('usage', '?')} · free tier: {info.get('is_free_tier')}"
+    )
+
+
+def _store_key(s: Settings, *, replace: bool, validate: bool) -> None:
+    from leak.llm.credentials import check_key_format
+    from leak.llm.openrouter import mask_key
+    from leak.llm.provider import LLMError
+
+    store = _key_store(s)
+    try:
+        existing = store.get()
+        if existing and not replace:
+            console.print("a key is already stored for this profile: `leak llm key replace`")
+            raise typer.Exit(1)
+        if not existing and replace:
+            console.print("no key stored for this profile yet: `leak llm key set`")
+            raise typer.Exit(1)
+        key = check_key_format(_prompt_key())
+        if validate:
+            try:
+                _print_key_info(_key_info(key, s))
+            except LLMError as e:
+                console.print(f"[red]not stored:[/] {e} (--no-validate stores it unchecked)")
+                raise typer.Exit(1) from None
+        store.set(key)
+    except CredentialError as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from None
+    console.print(f"{'replaced' if replace else 'stored'} {mask_key(key)} in the OS keychain "
+                  f"for profile {s.profile_id} ({s.paths.data_dir})")  # fmt: skip
+
+
+@key_app.command("set")
+def key_set(
+    validate: bool = typer.Option(True, "--validate/--no-validate",
+                                  help="Check the key with OpenRouter (GET /key) first."),
+) -> None:  # fmt: skip
+    """Store your OpenRouter key in the OS keychain (prompted, hidden)."""
+    _store_key(load_settings(), replace=False, validate=validate)
+
+
+@key_app.command("replace")
+def key_replace(
+    validate: bool = typer.Option(True, "--validate/--no-validate",
+                                  help="Check the new key with OpenRouter first."),
+) -> None:  # fmt: skip
+    """Swap the stored key for a new one (e.g. after rotating it)."""
+    _store_key(load_settings(), replace=True, validate=validate)
+
+
+@key_app.command("remove")
+def key_remove() -> None:
+    """Delete this profile's key from the OS keychain."""
+    from leak.llm.credentials import ENV_VAR
+
+    s = load_settings()
+    try:
+        removed = _key_store(s).delete()
+    except CredentialError as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from None
+    console.print("removed" if removed else "no key was stored for this profile")
+    if os.environ.get(ENV_VAR):
+        console.print(f"[yellow]{ENV_VAR} is still set in this environment and will be used[/]")
+
+
+@key_app.command("validate")
+def key_validate() -> None:
+    """Check the active key with OpenRouter. Sends no prompt or data."""
+    from leak.llm.credentials import resolve_key
+    from leak.llm.provider import LLMError
+
+    s = load_settings()
+    try:
+        resolved = resolve_key(KeyStore(s.profile_id), env_file_key_refused=s.env_file_key_refused)
+    except CredentialError as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from None
+    if resolved is None:
+        console.print(NO_KEY_HINT)
+        raise typer.Exit(1)
+    console.print(f"checking {resolved.masked} (from {resolved.source})…")
+    try:
+        _print_key_info(_key_info(resolved.key, s))
+    except LLMError as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from None
+
+
+@llm_app.command("status")
+def llm_status() -> None:
+    """Where the key comes from (masked), models, routing. No network."""
+    from leak.llm.credentials import ENV_VAR, backend_name, is_secure
+    from leak.llm.openrouter import mask_key, privacy_routing
+
+    s = load_settings()
+    store = _key_store(s)
+    backend = store.backend
+    secure = is_secure(backend)
+    try:
+        stored = store.get() if secure else None
+        keychain = mask_key(stored) if stored else "none"
+    except CredentialError as e:
+        keychain = f"unreadable ({e})"
+    env = os.environ.get(ENV_VAR, "").strip()
+    active = "env" if env else ("keychain" if keychain not in ("none",) and secure else "none")
+    t = Table(show_header=False, box=None)
+    t.add_row("provider", s.llm.provider)
+    t.add_row("profile", f"{s.profile_id}  (data dir {s.paths.data_dir.expanduser().resolve()})")
+    t.add_row("keychain", f"{backend_name(backend)} · {'secure' if secure else 'NOT usable'}")
+    t.add_row("stored key", keychain)
+    t.add_row(ENV_VAR, mask_key(env) if env else "not set")
+    unused = " (unused: provider = none)" if s.llm.provider == "none" else ""
+    t.add_row("active key", active + unused)
+    t.add_row("extract model", s.llm.extract_model)
+    t.add_row("reason model", s.llm.reason_model)
+    t.add_row("routing", f"provider={privacy_routing()} on every request")
+    console.print(t)
+    if s.env_file_key_refused:
+        console.print(f"[yellow]{ENV_VAR} in .env was ignored: Leak won't read keys from "
+                      "plaintext files. Remove it and run `leak llm key set`.[/]")  # fmt: skip
+    if active == "none" and s.llm.provider != "none":
+        console.print(f"[dim]{NO_KEY_HINT}; Leak runs local-only until then[/]")
+
+
+@llm_app.command("models")
+def llm_models() -> None:
+    """Check configured models against OpenRouter's live ZDR catalog (public; no key, no data)."""
+    from leak.llm.openrouter import ROLE_NEEDS, check_model, fetch_catalog
+    from leak.llm.provider import LLMError
+
+    s = load_settings()
+    try:
+        models, zdr = fetch_catalog()
+    except LLMError as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from None
+    bad = False
+    for role, model in (("extract", s.llm.extract_model), ("reason", s.llm.reason_model)):
+        problems = check_model(model, ROLE_NEEDS[role], models, zdr)
+        needs = ", ".join(sorted(ROLE_NEEDS[role]))
+        if problems:
+            bad = True
+            console.print(f"[red]✗ {role}[/] {model}: {'; '.join(problems)}")
+        else:
+            console.print(f"[green]✓ {role}[/] {model}: ZDR endpoint with {needs}")
+        if model not in s.llm.prices:
+            console.print("  [dim]no [llm.prices] entry: budgets rely on OpenRouter's "
+                          "reported cost and stop if it is missing[/]")  # fmt: skip
+    if bad:
+        console.print("Pick models from https://openrouter.ai/models with a ZDR endpoint "
+                      "(see README > Model compatibility).")  # fmt: skip
+        raise typer.Exit(1)
 
 
 @gmail_app.command("auth")

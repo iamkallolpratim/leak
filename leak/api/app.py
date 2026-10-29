@@ -33,6 +33,7 @@ from leak.harness.trace import list_runs, load_trace, trace_path
 from leak.ingest.scan import open_store
 from leak.privacy.redact import Redactor
 from leak.report import recurring_spend, report_findings
+from leak.share import CardPrivacyError, LeakCard, build_card, render_svg
 from leak.store import Store
 
 # `npm run build` in web/ writes the static dashboard into the package
@@ -124,6 +125,36 @@ def create_app(
             "pending_actions": len(ctx().executor.queue.pending()),
             "ledger": ctx().store.counts(),
         }
+
+    # -- the shareable Leak Card ------------------------------------------------------------
+    def card_or_422(names: bool) -> LeakCard:
+        try:
+            return build_card(report_findings(ctx().store), names=names)
+        except CardPrivacyError as e:
+            raise HTTPException(422, str(e)) from e
+
+    @app.get("/api/share-card")
+    def share_card(names: bool = True) -> dict[str, Any]:
+        card = card_or_422(names)
+        return {
+            "total_inr": float(card.total_inr),
+            "kinds": card.kinds,
+            "rows": [
+                {"name": r.name, "label": r.label, "annual_inr": float(r.annual_inr)}
+                for r in card.rows
+            ],
+            "more": card.more,
+            "text": card.share_text(),
+        }
+
+    @app.get("/api/share-card.svg")
+    def share_card_svg(names: bool = True) -> Response:
+        return Response(
+            render_svg(card_or_422(names)),
+            media_type="image/svg+xml",
+            # An SVG opened directly is a document: never let it run anything.
+            headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"},
+        )
 
     # -- findings + evidence -------------------------------------------------------------
     @app.get("/api/findings")

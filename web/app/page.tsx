@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { FindingCard } from "@/components/finding-card";
+import { ShareCardSheet } from "@/components/share-card";
 import { Button } from "@/components/ui/button";
 import { api, useData } from "@/lib/api";
 import { rupees } from "@/lib/utils";
@@ -29,6 +30,7 @@ export default function Dashboard() {
           From things you can cancel, downgrade or dispute — each one backed by statement lines, emails or SMS
           you can inspect. Counted once per merchant.
         </p>
+        {summary.data && <div><ShareCardSheet /></div>}
         {summary.data && (
           <dl className="grid grid-cols-2 gap-4 border-t pt-4 text-sm sm:grid-cols-4">
             <Stat label="More leaks to review" value={rupees(summary.data.review_inr) + "/yr"} />

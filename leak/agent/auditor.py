@@ -68,6 +68,7 @@ def run_audit(
             max_usd=a.max_usd,
             prices=settings.llm.prices,
             usd_inr=settings.budget.usd_inr,
+            max_retries=a.max_retries,
         ),
         trace_dir=settings.trace_dir,
         system=AUDITOR_SYSTEM,

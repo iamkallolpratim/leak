@@ -19,6 +19,7 @@ Everything that could make an agent dangerous or expensive is enforced
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -30,7 +31,14 @@ from leak.harness.context import Context
 from leak.harness.permissions import ApprovalQueue, PendingAction, PermissionPolicy
 from leak.harness.tools import ToolRegistry
 from leak.harness.trace import Tracer
-from leak.llm.provider import LLMError, LLMProvider, Message, ToolCall, ToolResult
+from leak.llm.provider import (
+    BeforeRequest,
+    LLMError,
+    LLMProvider,
+    Message,
+    ToolCall,
+    ToolResult,
+)
 
 RunStatus = Literal["completed", "budget_exceeded", "error"]
 
@@ -97,10 +105,18 @@ class AgentLoop:
         except BudgetExceeded as e:
             return self._finish("budget_exceeded", reason=e.reason)
         except LLMError as e:
+            if e.spent is not None:  # paid for before it failed: still counts
+                with contextlib.suppress(BudgetExceeded):
+                    self.budget.charge(e.spent, self.model)
             return self._finish("error", reason=str(e))
 
     # -- the loop ---------------------------------------------------------------
     def _loop(self) -> str:
+        if self.egress is None and getattr(self.provider, "requires_egress_guard", False):
+            raise LLMError(
+                f"refusing to run: provider '{self.provider.name}' sends data off this "
+                "machine and this loop has no egress filter"
+            )
         while True:
             # 1. Ask permission to take another step.
             self.budget.start_step()
@@ -126,6 +142,7 @@ class AgentLoop:
                 system=system,
                 messages=messages,
                 tools=tools,
+                before_request=self._gate(step),
             )
 
             # 3. Pay for it. Trace *before* charging so an over-budget call
@@ -154,6 +171,24 @@ class AgentLoop:
 
             # 6. Keep the prompt from growing without bound.
             self.context.compact()
+
+    def _gate(self, step: int) -> BeforeRequest:
+        """Runs before every HTTP attempt the provider makes for this step.
+
+        Attempt 0 was just filtered and traced above. Retries pay into the
+        budget and go through the egress filter again before they are sent.
+        """
+
+        def gate(attempt: int, system: str, messages: list[Message]) -> tuple[str, list[Message]]:
+            if attempt == 0:
+                return system, messages
+            self.budget.start_retry()
+            if self.egress:
+                system, messages = self.egress(system, messages)
+            self.tracer.emit("llm_retry", step, attempt=attempt, retries=self.budget.retries)
+            return system, messages
+
+        return gate
 
     def _handle(self, call: ToolCall, step: int) -> ToolResult:
         tool = self.registry.get(call.name)

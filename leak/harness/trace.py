@@ -30,7 +30,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from leak.llm.provider import LLMError, LLMResponse, Message, ToolSpec
+from leak.llm.provider import BeforeRequest, LLMError, LLMResponse, Message, ToolSpec
 
 
 class TraceEvent(BaseModel):
@@ -102,6 +102,7 @@ class ReplayProvider:
         messages: list[Message],
         tools: list[ToolSpec] | None = None,
         response_schema: type[BaseModel] | None = None,
+        before_request: BeforeRequest | None = None,  # replay sends nothing anywhere
     ) -> LLMResponse:
         try:
             return LLMResponse.model_validate(next(self._responses))

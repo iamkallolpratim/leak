@@ -13,6 +13,7 @@ Use it two ways:
 * `AgentLoop(egress=guard.filter)` -- the loop traces the filtered payload,
   so the trace shows exactly what the LLM saw.
 * `GuardedProvider(inner, guard)` -- for one-off LLM calls outside the loop.
+  It re-runs the guard before every attempt the provider makes (retries too).
 
 The other direction matters too: text the *model* wrote (finding merchant
 names, explanations) is untrusted -- it read your emails, and an email can
@@ -29,7 +30,14 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from leak.llm.provider import LLMError, LLMProvider, LLMResponse, Message, ToolSpec
+from leak.llm.provider import (
+    BeforeRequest,
+    LLMError,
+    LLMProvider,
+    LLMResponse,
+    Message,
+    ToolSpec,
+)
 from leak.privacy.redact import Redactor, find_pii
 
 
@@ -107,14 +115,23 @@ class GuardedProvider:
         messages: list[Message],
         tools: list[ToolSpec] | None = None,
         response_schema: type[BaseModel] | None = None,
+        before_request: BeforeRequest | None = None,
     ) -> LLMResponse:
         system, messages = self.guard.filter(system, messages)
+
+        # The inner provider calls this before *every* attempt (retries and
+        # JSON re-asks included), so nothing it sends skips the guard.
+        def gate(attempt: int, s: str, m: list[Message]) -> tuple[str, list[Message]]:
+            s, m = self.guard.filter(s, m)
+            return before_request(attempt, s, m) if before_request else (s, m)
+
         return self.inner.generate(
             model=model,
             system=system,
             messages=messages,
             tools=tools,
             response_schema=response_schema,
+            before_request=gate,
         )
 
 

@@ -2,7 +2,7 @@
 
 ```bash
 uv run python evals/run_evals.py          # offline: replays evals/cassettes/, no key, $0
-uv run python evals/run_evals.py --live   # calls Gemini for cache misses and records them
+uv run python evals/run_evals.py --live   # your OpenRouter key on cache misses; records them
 ```
 
 ## What's measured
@@ -22,8 +22,11 @@ Results are written to `evals/results.json`. Measured live costs (tokens, $, ₹
 * `fixtures/demo_labels.jsonl` — written by `demo/generate_sample_data.py` together with the
   synthetic demo inbox, so labels can't drift from the data. 43 docs: 22 emails + 21 SMS.
 * `cassettes/extract-<model>.jsonl` — recorded model output keyed by
-  `sha256(prompt version, model, redacted text)`. Changing the prompt (`PROMPT_VERSION`) or the
-  model invalidates exactly the affected entries; re-record with `--live`.
+  `sha256(prompt version, model, redacted text)`; `/` in the model id becomes `--` in the file
+  name. Changing the prompt (`PROMPT_VERSION`) or the model invalidates exactly the affected
+  entries; re-record with `--live` (needs your OpenRouter key, sends synthetic data only).
+  The committed `extract-google--gemini-3.5-flash-lite.jsonl` was recorded on 2026-10-17 with
+  `gemini-3.5-flash-lite` via Google's API, then re-keyed to the OpenRouter id of the same model.
 
 Only synthetic data is ever sent to a model by the evals.
 

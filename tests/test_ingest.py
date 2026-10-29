@@ -249,7 +249,7 @@ def test_run_scan_reports_progress_for_every_source(tmp_path, monkeypatch):
     from leak.config import load_settings
     from leak.ingest.scan import DEMO_DIR, demo_inputs, run_scan
 
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     s = load_settings(overlay=DEMO_DIR / "demo.toml")
     s.paths.data_dir = tmp_path
     rec = Recorder()

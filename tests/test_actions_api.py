@@ -19,9 +19,9 @@ def demo(tmp_path):
     from leak.extract.run import demo_cache, run_extract
     from leak.ingest.scan import DEMO_DIR, demo_inputs, open_store, run_scan
 
-    os.environ.pop("GEMINI_API_KEY", None)
+    os.environ.pop("OPENROUTER_API_KEY", None)
     s = load_settings(overlay=DEMO_DIR / "demo.toml")
-    os.environ.pop("GEMINI_API_KEY", None)
+    os.environ.pop("OPENROUTER_API_KEY", None)
     s.paths.data_dir = tmp_path
     run_scan(s, **demo_inputs())
     run_extract(s, cache=demo_cache(s.llm.extract_model))

@@ -1,44 +1,68 @@
 # Leak configuration. Copy to config.toml and edit.
-# Secrets (GEMINI_API_KEY) go in .env, never here.
+# No secrets here. Your OpenRouter key goes in the OS keychain (`leak llm key set`),
+# or in OPENROUTER_API_KEY for headless/CI use. Never in this file or in .env.
 
 [llm]
-# "gemini": used only when GEMINI_API_KEY is set, and only ever sent masked text.
+# "openrouter": used only when this profile has a key, and only ever sent masked text,
+#               with ZDR + no-data-collection routing enforced on every request.
 # "none": fully local even if a key exists (bank plugins, OCR, SMS rules, detectors).
-provider = "gemini"
-# Model IDs are config, not code. Check current IDs at
-# https://ai.google.dev/gemini-api/docs/models  (checked 2026-10-17)
-extract_model = "gemini-3.5-flash-lite"   # cheap, high-volume extraction
-reason_model  = "gemini-3.1-pro-preview"  # auditor agent; no stable Pro yet
+provider = "openrouter"
+# OpenRouter model ids ("vendor/model"). Env OPENROUTER_MODEL_EXTRACT / OPENROUTER_MODEL_REASON
+# override these. Checked against https://openrouter.ai/api/v1/endpoints/zdr on 2026-10-29:
+# both have Zero Data Retention endpoints (Google Vertex) with tools + structured outputs.
+# `leak llm models` re-checks your choice against the live catalog.
+extract_model = "google/gemini-3.5-flash-lite"   # cheap, high-volume extraction (structured output)
+reason_model  = "google/gemini-3.1-pro-preview"  # auditor agent (tool calling)
+# Other ZDR-compatible picks seen on 2026-10-29 (re-check before use):
+#   reason:  "anthropic/claude-sonnet-5.5", "openai/gpt-5.6-terra"
+#   extract: "google/gemini-3.6-flash"
+timeout_s = 120     # per HTTP attempt
+max_retries = 4     # per call; only 408/429/5xx/network errors are retried
 
-# USD per 1M tokens (paid tier, prompts <=200k). Used for budgets only;
-# treat as an estimate. https://ai.google.dev/gemini-api/docs/pricing
-[llm.prices."gemini-3.5-flash-lite"]
-input = 0.30
-output = 2.50
-cached_input = 0.03
+# USD per 1M tokens. Only used when OpenRouter does not report a call's cost
+# (it normally does: `usage.cost`, which is what your account is billed).
+# Deliberately conservative: the priciest ZDR endpoint per model on 2026-10-29
+# (Vertex "priority" tier, prompts <=200k). Local numbers, not your bill.
+[llm.prices."google/gemini-3.5-flash-lite"]
+input = 0.54
+output = 4.50
+cached_input = 0.054
 
-[llm.prices."gemini-3.6-flash"]
-input = 0.75
-output = 3.75
-cached_input = 0.075
+[llm.prices."google/gemini-3.6-flash"]
+input = 1.35
+output = 6.75
+cached_input = 0.135
 
-[llm.prices."gemini-3.1-pro-preview"]
-input = 2.00
-output = 12.00
-cached_input = 0.20
+[llm.prices."google/gemini-3.1-pro-preview"]
+input = 3.60
+output = 21.60
+cached_input = 0.36
+
+[llm.prices."anthropic/claude-sonnet-5.5"]
+input = 2.20
+output = 11.00
+cached_input = 0.11
+
+[llm.prices."openai/gpt-5.6-terra"]
+input = 2.20
+output = 13.20
+cached_input = 0.22
 
 [budget]
 max_steps = 25
-max_usd = 0.50        # per run
+max_usd = 0.50        # per run (local estimate; OpenRouter bills your own account)
+max_retries = 10      # HTTP retries + JSON re-asks per run
 usd_inr = 88.0        # fixed rate for showing cost in ₹
 
 [agent]
 # The auditor (reason_model) gets its own, larger budget per `leak report` run.
 max_steps = 30
 max_usd = 1.00
+max_retries = 10
 
 [paths]
-data_dir = ".leak"    # SQLite DB, vault, traces live here (gitignored)
+data_dir = ".leak"    # SQLite DB, vault, traces live here (gitignored). One profile per
+                      # data_dir: each gets its own keychain entry for the OpenRouter key.
 
 # Tighten any tool's permission: "auto" | "needs_approval" | "forbidden".
 # Overrides can only make a tool stricter, never looser.

@@ -49,7 +49,7 @@ def assert_clean(payload: str) -> None:
 
 @pytest.fixture
 def demo_settings(tmp_path, monkeypatch):
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     s = load_settings(overlay=DEMO_DIR / "demo.toml")
     s.paths.data_dir = tmp_path
     return s
